@@ -1,0 +1,93 @@
+%YAML:1.0
+# ICL_dataset 的内参
+#fx: 481.2
+#fy: -480.0
+#cx: 319.5
+#cy: 239.5
+
+# TUM_RGBD_dataset fr3 的内参
+fx: 535.4
+fy: 539.2
+cx: 320.1
+cy: 247.6
+
+# 数据集类型， 有 arkit， arcore， tum，三种数据集的读取方式不同
+imgSource: arkit
+#imgSource: arcore
+#imgSource: tum
+
+preload: 1
+
+
+poseFilePath: /media/zcc/DVolume/Dataset/Ours/ARKit/box1/box1
+poseFilename: arkit.csv
+#poseFilePath: /media/zcc/DVolume/zcc_work/dataset/Ours/ARCore/myP20_1
+#poseFilename: parameters.txt
+#poseFilePath: /media/zcc/DVolume/Dataset/TUM/RGBD/rgbd_dataset_freiburg3_long_office_household_validation
+#poseFilename: associations_orbpose_depth_rgb.txt
+
+meshName: result.ply
+
+endImageInd: 5000
+usePangolinGui: 0
+
+# select frame
+optflowBufferSize: 40
+subKeyFrame_B_thresh: 0.005
+subKeyFrame_Z_thresh: 0.005
+subKeyFrame_theta_thresh: 1
+keyFrame_B_thresh: 0.004
+keyFrame_Z_thresh: 0.004
+keyFrame_theta_thresh: 0.08
+
+# select best target frame
+desiredDeltB_min: 0.01
+desiredDeltB_max: 0.1
+desiredDeltZRatio: 0.2
+desiredDeltTheta: 2
+ratioBetweenBaselineAndMedianDepth: 0.04
+
+# optflow
+optflowDownsample: 2
+optflowPatchSize: 8
+optflowFinestScale: 1
+optflowCoarsetScale: 3
+optflowUseSpaticalPropagation: 1
+minAreaWhenFilterOutlierInOptflow: 200
+
+# triangulation
+triangulateDownsample: 2
+optflowMarginWidth: 10
+minValidPointNumRatio: 0.1
+
+# open chisel
+chunkSizeX: 8
+chunkSizeY: 8
+chunkSizeZ: 8
+voxelResolution: 0.04
+truncationDist: 0.1 # 最小的截断距离
+truncationDistRatioToDepth: 0.15
+saveFileOnExit: 1
+nearPlaneDist: 0.2
+farPlaneDist: 5.0
+depthScale: 5000
+useThirdThread: 1
+
+# 融合时的方式，0是precise，1是fast，2是bundlefusion，不过建模精度肯能会略有下降
+fusionMode: 1
+
+
+use_glfw_gui: 1
+vertexShaderFileName_mesh: /home/zcc/Project/Work/DenseReconstruction/optflow_tsdf_ios/arkit_demo/optflow_tsdf/src/shaders/mesh.vs
+fragShaderFileName_mesh: /home/zcc/Project/Work/DenseReconstruction/optflow_tsdf_ios/arkit_demo/optflow_tsdf/src/shaders/mesh.fs
+vertexShaderFileName_backImg: /home/zcc/Project/Work/DenseReconstruction/optflow_tsdf_ios/arkit_demo/optflow_tsdf/src/shaders/back_img.vs
+fragShaderFileName_backImg: /home/zcc/Project/Work/DenseReconstruction/optflow_tsdf_ios/arkit_demo/optflow_tsdf/src/shaders/back_img.fs
+meshTextureName: /home/zcc/Project/Work/DenseReconstruction/optflow_tsdf_ios/arkit_demo/optflow_tsdf/resources/grid.jpeg
+
+# for offline glfw_gui
+plyFilePath: /home/zcc/Project/Work/DenseReconstruction/optflow_tsdf_ios/arkit_demo/optflow_tsdf/resources/result.ply
+
+
+
+
+

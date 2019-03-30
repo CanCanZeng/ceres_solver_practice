@@ -34,13 +34,25 @@ include_directories(
     ${CERES_INCLUDE_DIRS}
     )
 
-add_executable( main_test_ceres_hello
-    test/main_test_ceres_hello.cpp
-)
+#add_library( SLAM
+#    src/SLAM/frame.cpp
+#    src/SLAM/key_frame.cpp
+#    src/SLAM/key_frame_database.cpp
+#    src/SLAM/map.cpp
+#    src/SLAM/map_point.cpp
+#    src/SLAM/optimizer.cpp
+#    src/SLAM/pnp_solver.cpp
+#    src/SLAM/slam_system.cpp
+#    src/SLAM/tracker.cpp
+#    )
 
-target_link_libraries (main_test_ceres_hello
-    ${CERES_LIBRARIES}
-    )
+#add_executable( main_test_ceres_hello
+#    test/main_test_ceres_hello.cpp
+#)
+
+#target_link_libraries (main_test_ceres_hello
+#    ${CERES_LIBRARIES}
+#    )
 
 add_executable( main_test_pose_graph
     test/main_test_pose_graph.cpp
@@ -48,4 +60,17 @@ add_executable( main_test_pose_graph
 
 target_link_libraries (main_test_pose_graph
     ${CERES_LIBRARIES}
+    )
+
+find_package(OpenCV REQUIRED)
+find_package(Eigen3 REQUIRED)
+include_directories(
+    ${EIGEN3_INCLUDE_DIR}
+    ${OpenCV_INCLUDE_DIRS}
+    )
+add_executable(main_test_naive
+    test/main_test_naive.cpp
+    )
+target_link_libraries(main_test_naive
+    ${OpenCV_LIBS}
     )
