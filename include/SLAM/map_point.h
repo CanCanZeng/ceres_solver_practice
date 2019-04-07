@@ -1,67 +1,72 @@
+#ifndef SLAM_MAP_POINT_H
+#define SLAM_MAP_POINT_H
 
-#include <map>
+#include <vector>
 
-#include <opencv2/core.hpp>
-#include <mutex>
-
-#include "SLAM/key_frame.h"
-#include "SLAM/frame.h"
-#include "SLAM/map.h"
+#include <Eigen/Core>
 
 namespace SLAM
 {
-class KeyFrame;
-class Map;
+
 class Frame;
+class Map;
+
+struct Observation
+{
+public:
+    Observation(Frame* pFrame, const size_t& keypointIdx)
+        :pFrame_(pFrame), keypointIdx_(keypointIdx)
+    {}
+
+public:
+
+    size_t keypointIdx_;
+    Frame* pFrame_;
+//    MapPoint* pMapPoint_;
+};
 
 class MapPoint
 {
 public:
-    MapPoint(const cv::Mat& pos, KeyFrame* pRefKF, Map* pMap);
-    MapPoint(const cv::Mat& pos, Map* pMap, Frame* pFrame, const int& idFrame);
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-    void SetWorldPos(const cv::Mat& pos);
-    cv::Mat GetWorldPos();
+    ~MapPoint();
 
-    cv::Mat GetNormal();
-    KeyFrame* GetReferenceKeyFrame();
+    // 生成一个已经三角化过的地图点
+    MapPoint(const Eigen::Vector3f& position, Frame* pRefFrame)
+        :position_(position),  pRefFrame_(pRefFrame), badFlag_(false) {}
 
-    std::map<KeyFrame*, size_t> GetObservations();
-    int ObservationTimes();
+    // 生成一个还没有被三角化的地图点
+    MapPoint(Frame* pRefFrame)
+        :position_(Eigen::Vector3f(0, 0, 0)), pRefFrame_(pRefFrame), badFlag_(false) {}
 
-    void AddObservation(KeyFrame* pKF, size_t idx);
-    void EraseObservation(KeyFrame* pKF);
-
-    int GetIndexInKeyFrame(KeyFrame* pKF);
-    bool IsInKeyFrame(KeyFrame* pKF);
-
-    void SetBadFlag();
-    bool IsBad();
+    void AddObservation(Observation* observation) {observations_.push_back(observation);}
 
 public:
-    uint64_t id_;
-    static uint64_t nextId_;
-    int64_t firstKeyFrameId_;
-    int64_t firstFrameId_;
-    int32_t numObservations_;
 
-    // 世界坐标系中的位置
-    cv::Mat worldPos_;
-
-    //
-    std::map<KeyFrame*, size_t> observations_;
+    Eigen::Vector3f position_;
+    std::vector<Observation*> observations_;
 
     // 参考关键帧
-    KeyFrame* pRefKF_;
-
+    Frame* pRefFrame_;
     bool badFlag_; // 指示这个点是否是好的
 
     Map* pMap_;
+};
 
-    std::mutex mutexPos_;
-    std::mutex mutexFeatures_;
+MapPoint::~MapPoint()
+{
+    for(auto pObserv : observations_)
+    {
+        if(pObserv != nullptr)
+        {
+            delete pObserv;
+            pObserv = nullptr;
+        }
+    }
+    observations_.clear();
 }
 
-
-
 }
+
+#endif // SLAM_MAP_POINT_H

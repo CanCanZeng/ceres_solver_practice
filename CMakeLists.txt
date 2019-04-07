@@ -46,13 +46,13 @@ include_directories(
 #    src/SLAM/tracker.cpp
 #    )
 
-#add_executable( main_test_ceres_hello
-#    test/main_test_ceres_hello.cpp
-#)
+add_executable( main_test_ceres_hello
+    test/main_test_ceres_hello.cpp
+)
 
-#target_link_libraries (main_test_ceres_hello
-#    ${CERES_LIBRARIES}
-#    )
+target_link_libraries (main_test_ceres_hello
+    ${CERES_LIBRARIES}
+    )
 
 add_executable( main_test_pose_graph
     test/main_test_pose_graph.cpp
@@ -72,5 +72,30 @@ add_executable(main_test_naive
     test/main_test_naive.cpp
     )
 target_link_libraries(main_test_naive
+    ${CERES_LIBRARIES}
     ${OpenCV_LIBS}
     )
+
+add_executable(main_test_naive2
+    test/main_test_naive2.cpp
+    )
+target_link_libraries(main_test_naive2
+    ${CERES_LIBRARIES}
+    ${OpenCV_LIBS}
+    )
+
+add_executable(main_test_naive3
+    test/main_test_naive3.cpp
+    )
+target_link_libraries(main_test_naive3
+    ${CERES_LIBRARIES}
+    ${OpenCV_LIBS}
+    )
+
+#add_executable(main_test_rgbd_BA
+#    test/main_test_rgbd_BA.cpp
+#    )
+#target_link_libraries(main_test_rgbd_BA
+#    ${CERES_LIBRARIES}
+#    ${OpenCV_LIBS}
+#    )

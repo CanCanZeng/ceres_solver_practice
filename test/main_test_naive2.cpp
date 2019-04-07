@@ -17,134 +17,19 @@
 #include "image_source_manager.h"
 
 #include "reprojection_error_with_quaternion.h"
-//#include "bal_problem.h"
 
-class Observation;
-class MapPoint;
-class Map;
-class Frame;
-class FrameDatabase;
+#include "SLAM/map.h"
+#include "SLAM/map_point.h"
+#include "SLAM/frame.h"
+#include "SLAM/frame_database.h"
+#include "SLAM/optimizer.h"
 
-class Observation
-{
-public:
-    Observation(Frame* pFrame, const size_t& keypointIdx)
-        :pFrame_(pFrame), keypointIdx_(keypointIdx)
-    {}
-
-public:
-
-    size_t keypointIdx_;
-    Frame* pFrame_;
-//    MapPoint* pMapPoint_;
-};
-
-class MapPoint
-{
-public:
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
-    // 生成一个已经三角化过的地图点
-    MapPoint(const Eigen::Vector3f& position, Frame* pRefFrame)
-        :position_(position),  pRefFrame_(pRefFrame), badFlag_(false) {}
-
-    // 生成一个还没有被三角化的地图点
-    MapPoint(Frame* pRefFrame)
-        :position_(Eigen::Vector3f(0, 0, 0)), pRefFrame_(pRefFrame), badFlag_(false) {}
-
-    void AddObservation(Observation* observation) {observations_.push_back(observation);}
-
-public:
-
-    Eigen::Vector3f position_;
-    std::vector<Observation*> observations_;
-
-    // 参考关键帧
-    Frame* pRefFrame_;
-    bool badFlag_; // 指示这个点是否是好的
-
-    Map* pMap_;
-};
-
-class Map
-{
-public:
-    size_t size() {return data.size();}
-    void AddMapPoint(MapPoint* pMapPoint)
-    {
-        data.insert(pMapPoint);
-    }
-
-    void DeleteMapPoint(MapPoint* pMapPoint)
-    {
-        auto result = data.find(pMapPoint);
-        if(result != data.end())
-            data.erase(pMapPoint);
-    }
-
-public:
-    std::set<MapPoint*> data;
-    FrameDatabase* pFrameDatabase_;
-};
-
-class Frame
-{
-public:
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
-    Frame() {}
-    Eigen::Matrix3f Rwc()
-    {
-        return poseTwc_.block(0, 0, 3, 3);
-    }
-
-    Eigen::Vector3f twc()
-    {
-        return poseTwc_.block(0, 3, 3, 1);
-    }
-
-    void SetIntrinsicAndExtrinsic(const Eigen::Vector4f& intrinsic, const Eigen::Matrix4f& poseTwc);
-    void ComputeProjectMatrix()
-    {
-        Eigen::Matrix3f K;
-        K << intrinsic_[0], 0, intrinsic_[2], 0, intrinsic_[1], intrinsic_[3], 0, 0, 1;
-        Eigen::Matrix3f R_wc = poseTwc_.block(0, 0, 3, 3);
-        Eigen::Vector3f t_wc = poseTwc_.block(0, 3, 3, 1);
-        projectionMatrix_.leftCols<3>() = R_wc.transpose();
-        projectionMatrix_.rightCols<1>() = -R_wc.transpose() * t_wc;
-        projectionMatrix_ = K * projectionMatrix_;
-    }
-
-public:
-    cv::Mat img_;  // 图像
-    size_t frameIndex_; // 图像的索引
-    std::vector<cv::KeyPoint> keypoints_;  // 关键点
-    std::vector<MapPoint*> pMapPoints_;    // 关键点对应的地图点
-    cv::Mat descriptors_;                   // 关键点对应的描述子
-
-    Eigen::Matrix4f poseTwc_;  // 位姿
-    Eigen::Vector4f intrinsic_; // 内参
-    Eigen::Matrix<float, 3, 4> projectionMatrix_;  // 投影矩阵，用来做三角化的
-
-    // 用来做 BA 的位姿
-    float q[4];
-    float t[3];
-};
-
-
-class FrameDatabase
-{
-public:
-    void AddFrame(Frame* frame) { frames_.push_back(frame);}
-//    void EraseFrame(Frame* frame);
-    inline size_t size() {return frames_.size();}
-
-    Frame* operator[](size_t i) {return frames_[i];}
-
-    std::vector<Frame*> frames_;
-};
-
-
+using SLAM::Observation;
+using SLAM::MapPoint;
+using SLAM::Map;
+using SLAM::Frame;
+using SLAM::FrameDatabase;
+using SLAM::Optimizer;
 
 //void FindGoodMatches(std::vector<cv::DMatch>& GoodMatchePoints, const cv::flann::Index& flannIndex, const cv::Mat& imageDesc2)
 //{
@@ -355,141 +240,6 @@ bool SavePointCloud(const string& filename, const vector<Eigen::Vector3f>& point
     return true;
 }
 
-class Optimizer
-{
-public:
-    ~Optimizer()
-    {
-        if(cameraParameters_ != nullptr)
-            delete[] cameraParameters_;
-        if(pts3d_ != nullptr)
-            delete[] pts3d_;
-    }
-
-    void BuildOptimizationProblem(Map& currMap);
-    void SolveProblem();
-    void GetResult(Map& currMap);
-
-    void CopyCameraParams(double* pCameraParams, Frame* frame);
-    void CopyMapPointParams(double* pPt3d, MapPoint* mapPoint);
-
-public:
-    ceres::Problem problem_;
-
-    uint32_t numOfMapPoints_;
-    uint32_t numOfCameras_;
-    uint32_t numOfObservations_;
-    double* cameraParameters_ = nullptr;
-    double* pts3d_ = nullptr;
-    std::map<uint32_t, MapPoint*> mapFromPointIndex2MapPoint_;
-    std::map<Frame*, uint32_t> mapFromFrame2CameraIndex_;
-};
-
-void Optimizer::BuildOptimizationProblem(Map& currMap)
-{
-    uint32_t numOfMapPoints = currMap.data.size();
-    uint32_t numOfCameras = currMap.pFrameDatabase_->frames_.size();
-    uint32_t numOfObservations = 0;
-    for(auto pMapPoint: currMap.data)
-    {
-        numOfObservations += pMapPoint->observations_.size();
-    }
-
-    numOfCameras_ = numOfCameras;
-    numOfMapPoints_ = numOfMapPoints;
-    numOfObservations_ = numOfObservations;
-    std::cout << "number of cameras: " << numOfCameras << std::endl;
-    std::cout << "number of map points: " << numOfMapPoints << std::endl;
-    std::cout << "number of observations: " << numOfObservations << std::endl;
-
-    cameraParameters_ = new double[numOfCameras*6];
-    pts3d_ = new double[numOfMapPoints*3];
-
-    const std::vector<Frame*>& frames = currMap.pFrameDatabase_->frames_;
-    for(uint32_t i=0; i<numOfCameras; ++i)
-    {
-        double* pCameraParams = cameraParameters_ + 6*i;
-        CopyCameraParams(pCameraParams, frames[i]);
-        mapFromFrame2CameraIndex_[frames[i]] = i;
-    }
-
-    uint32_t index = 0;
-    for(auto pMapPoint : currMap.data)
-    {
-//        MapPoint* pMapPoint = *iter;
-        double* pPts3d = pts3d_ + 3*index;
-        CopyMapPointParams(pPts3d, pMapPoint);
-        mapFromPointIndex2MapPoint_[index] = pMapPoint;
-
-        for(auto pObservation : pMapPoint->observations_)
-        {
-//            Observation* pObservation = *iter2;
-            Frame* pFrame = pObservation->pFrame_;
-            cv::KeyPoint kpt = pFrame->keypoints_[pObservation->keypointIdx_];
-            double fx = pFrame->intrinsic_[0];
-            double fy = pFrame->intrinsic_[1];
-            double cx = pFrame->intrinsic_[2];
-            double cy = pFrame->intrinsic_[3];
-
-            uint32_t cameraIndex = mapFromFrame2CameraIndex_[pFrame];
-            double* pCameraParam = cameraParameters_ + cameraIndex * 6;
-
-            ceres::CostFunction* cost_function =
-                ReprojectionErrorWithAngleAxis::Create(kpt.pt.x, kpt.pt.y, fx, fy, cx, cy);
-            problem_.AddResidualBlock(cost_function,
-                                     new ceres::HuberLoss(2) /* squared loss */,
-//                                      NULL,
-                                     pCameraParam,
-                                     pPts3d);
-        }
-        index++;
-    }
-}
-
-void Optimizer::SolveProblem()
-{
-    ceres::Solver::Options options;
-    options.linear_solver_type = ceres::DENSE_SCHUR;
-    options.minimizer_progress_to_stdout = true;
-    options.max_num_iterations = 100;
-
-    ceres::Solver::Summary summary;
-    ceres::Solve(options, &problem_, &summary);
-    std::cout << summary.FullReport() << "\n";
-}
-
-void Optimizer::GetResult(Map &currMap)
-{
-
-}
-
-void Optimizer::CopyCameraParams(double *pCameraParams, Frame *frame)
-{
-    Eigen::Matrix3f Rwc = frame->Rwc();
-    Eigen::Vector3f twc = frame->twc();
-
-    Eigen::Matrix3f Rcw = Rwc.transpose();
-    Eigen::Vector3f tcw = -Rwc.transpose() * twc;
-
-    Eigen::AngleAxisf q(Rcw);
-    Eigen::Vector3f temp = q.axis() * q.angle();
-    pCameraParams[0] = temp[0];
-    pCameraParams[1] = temp[1];
-    pCameraParams[2] = temp[2];
-
-    pCameraParams[3] = tcw[0];
-    pCameraParams[4] = tcw[1];
-    pCameraParams[5] = tcw[2];
-}
-
-void Optimizer::CopyMapPointParams(double *pPt3d, MapPoint *mapPoint)
-{
-    Eigen::Vector3f position = mapPoint->position_;
-    pPt3d[0] = position[0];
-    pPt3d[1] = position[1];
-    pPt3d[2] = position[2];
-}
-
 int main(int argc, char** argv)
 {
     if(argc < 2)
@@ -659,18 +409,18 @@ int main(int argc, char** argv)
     }
 
     // 遍历一遍地图点，如果观测次数少于3次，直接剔除
-    for(auto iter = currMap.data.begin(); iter != currMap.data.end(); ++iter)
+    for(auto iter = currMap.data_.begin(); iter != currMap.data_.end(); ++iter)
     {
         auto pMapPoint = *iter;
-       if(pMapPoint->observations_.size() < 4)
-       {
-           currMap.DeleteMapPoint(pMapPoint);
-       }
+        if(pMapPoint->observations_.size() < 3)
+        {
+            currMap.DeleteMapPoint(pMapPoint);
+        }
     }
 
     // 将所有的地图点保存下来看看
     std::vector<Eigen::Vector3f> pointCloud;
-    for(auto pMapPoint : currMap.data)
+    for(auto pMapPoint : currMap.data_)
     {
         Eigen::Vector3f& pt = pMapPoint->position_;
         pointCloud.push_back(pt);

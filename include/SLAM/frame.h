@@ -1,10 +1,14 @@
+#ifndef SLAM_FRAME_H
+#define SLAM_FRAME_H
 
+#include <iostream>
 #include <vector>
+
+#include <Eigen/Core>
 
 #include <opencv2/core.hpp>
 
 #include "SLAM/map_point.h"
-#include "SLAM/key_frame.h"
 
 namespace SLAM
 {
@@ -12,73 +16,56 @@ namespace SLAM
 class Frame
 {
 public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
     Frame() {}
+    ~Frame();
+    Eigen::Matrix3f Rwc()
+    {
+        return poseTwc_.block(0, 0, 3, 3);
+    }
 
-    Frame(const Frame& frame);
+    Eigen::Vector3f twc()
+    {
+        return poseTwc_.block(0, 3, 3, 1);
+    }
 
-    Frame(const cv::Mat& imgGray, const double& timeStamp, cv::Mat& K, cv::Mat& distortCoeff);
-
-    Frame(const cv::Mat& imgGray, const cv::Mat& imgDepth, const double& timeStamp,
-          cv::Mat& K, cv::Mat& distortCoeff);
-
-    void SetPose(cv::Mat Tcw);
-
-    void UpdatePoseMatrices();
-
-    inline cv::Mat GetCameraCenter()  {   return posetwc_.clone();    }
-
-    bool IsInFrustum(MapPoint* pMapPoint, float viewingCosLimit);
-    cv::Mat UnprojectStereo(const int& i);
-
-    //
-    void UndistortKeyPoints();
-    void ComputeImageBounds(const cv::Mat& img);
-
+    void SetIntrinsicAndExtrinsic(const Eigen::Vector4f& intrinsic, const Eigen::Matrix4f& poseTwc);
+    void ComputeProjectMatrix()
+    {
+        Eigen::Matrix3f K;
+        K << intrinsic_[0], 0, intrinsic_[2], 0, intrinsic_[1], intrinsic_[3], 0, 0, 1;
+        Eigen::Matrix3f R_wc = poseTwc_.block(0, 0, 3, 3);
+        Eigen::Vector3f t_wc = poseTwc_.block(0, 3, 3, 1);
+        projectionMatrix_.leftCols<3>() = R_wc.transpose();
+        projectionMatrix_.rightCols<1>() = -R_wc.transpose() * t_wc;
+        projectionMatrix_ = K * projectionMatrix_;
+    }
 
 public:
+    cv::Mat img_;  // 图像
+    size_t frameIndex_; // 图像的索引
+    std::vector<cv::KeyPoint> keypoints_;  // 关键点
+    std::vector<MapPoint*> pMapPoints_;    // 关键点对应的地图点
+    cv::Mat descriptors_;                   // 关键点对应的描述子
 
-    double timeStamp_;
-    cv::Mat K_;
-    static float fx_;
-    static float fy_;
-    static float cx_;
-    static float cy_;
-    static float invFx_;
-    static float invFy_;
-    cv::Mat distortionCoef_;
+    Eigen::Matrix4f poseTwc_;  // 位姿
+    Eigen::Vector4f intrinsic_; // 内参
+    Eigen::Matrix<float, 3, 4> projectionMatrix_;  // 投影矩阵，用来做三角化的
+};
 
-    int32_t numOfKeyPoints_;
-
-    // 观察到的关键点
-    std::vector<cv::KeyPoint> keyPoints_;
-    std::vector<cv::KeyPoint> keyPointsUndistorted_;
-    // 关键点对应的深度
-    std::vector<float> depths_;
-
-    // 描述子
-    cv::Mat descriptors_;
-
-    // 关键点对应的地图点，如果没有就是NULL
-    std::vector<MapPoint*> mapPoints_;
-
-    std::vector<bool> outliers_;
-
-
-
-    // 当前和下一个的 frame id
-    static uint64_t nextId_;
-    uint64_t id_;
-
-    // 参考关键帧
-    KeyFrame* pRefKF_;
-
-
-    // 跟位姿相关的量
-    cv::Mat poseTcw_;
-    cv::Mat poseRcw_;
-    cv::Mat posetcw_;
-    cv::Mat poseRwc_;
-    cv::Mat posetwc_;
+Frame::~Frame()
+{
+//    for(size_t i=0, iEnd=pMapPoints_.size(); i<iEnd; ++i)
+//    {
+//        if(pMapPoints_[i] != nullptr)
+//        {
+//            delete pMapPoints_[i];
+//            pMapPoints_[i] = nullptr;
+//        }
+//    }
 }
 
 }
+
+#endif // SLAM_FRAME_H

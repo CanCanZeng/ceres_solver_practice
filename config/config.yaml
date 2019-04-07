@@ -19,11 +19,11 @@ imgSource: arkit
 preload: 1
 
 
-poseFilePath: /media/zcc/DVolume/Dataset/Ours/ARKit/box1/box1
+poseFilePath: /home/zcc/Dataset/SfM/Arkit/box1_xs/images
 poseFilename: arkit.csv
 #poseFilePath: /media/zcc/DVolume/zcc_work/dataset/Ours/ARCore/myP20_1
 #poseFilename: parameters.txt
-#poseFilePath: /media/zcc/DVolume/Dataset/TUM/RGBD/rgbd_dataset_freiburg3_long_office_household_validation
+#poseFilePath: /media/zcc/DVolume/Dataset/TUM/RGBD/rgbd_dataset_freiburg3_structure_texture_far
 #poseFilename: associations_orbpose_depth_rgb.txt
 
 meshName: result.ply
