@@ -99,3 +99,10 @@ target_link_libraries(main_test_naive3
 #    ${CERES_LIBRARIES}
 #    ${OpenCV_LIBS}
 #    )
+
+add_executable(main_test_solve_AXXB
+    test/main_test_solve_AXXB.cpp
+    )
+target_link_libraries(main_test_solve_AXXB
+    ${CERES_LIBRARIES}
+    )
