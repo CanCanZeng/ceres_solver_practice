@@ -106,3 +106,10 @@ add_executable(main_test_solve_AXXB
 target_link_libraries(main_test_solve_AXXB
     ${CERES_LIBRARIES}
     )
+
+add_executable(main_test_solve_AXYB
+    test/main_test_solve_AXYB.cpp
+    )
+target_link_libraries(main_test_solve_AXYB
+    ${CERES_LIBRARIES}
+    )
